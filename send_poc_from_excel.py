@@ -133,7 +133,7 @@ class excel_sender:
                 ws.cell(row=start_row,column=col1+1,value=response_all.status_code)
 
                 pattern_ah = r"Request ID:  (\d{19})"
-                pattern_ct = r"event_id: ([a-fA-F0-9]{32})"              #v1.3,长亭返回id
+                pattern_ct = r"event_id: ([a-fA-F0-9]{32})"              #v1.3,ct返回id
                 match_ah = re.search(pattern_ah, response_all.text)
                 if match_ah:
                     ws.cell(row=start_row, column=col1+2, value=match_ah.group(1))
