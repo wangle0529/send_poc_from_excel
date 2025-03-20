@@ -9,5 +9,5 @@ send_poc_from_excel.exe [-h] --input_file INPUT_FILE --row ROW --column COLUMN -
 ```
 ## 示例
 ```shell
-.\send_poc_from_excel.exe --input_file D:\VM\python\POC\venv\Files\123.xlsx --row 2 --column 2 --output_file D:\VM\python\POC\venv\Files\789.xlsx --output_column 6 --dst 10.50.81.59:8000
+.\send_poc_from_excel.exe --input_file D:\testfiles\123.xlsx --row 2 --column 2 --output_file D:\testfiles\789.xlsx --output_column 6 --dst 192.168.1.200:8080
 ```
