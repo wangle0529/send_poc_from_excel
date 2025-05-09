@@ -80,25 +80,14 @@ class excel_sender:
     def send_1_poc(self):
         #发送一条poc
         self.return_content=""
-        try:
-            response = requests.post(
-                url=f"http://{self.dst}{self.path}",
-                headers=self.headers,
-                data=self.body
-            )
-            # print("Response Status Code:", response.status_code)
-            # print("Response Body:", response.text)
-            return response
-        except Exception as e:
-            # print("An error occurred:", e)
-            response = requests.post(
-                url=f"http://{self.dst}{self.path}",
-                headers=self.headers,
-                data=self.body.encode('utf-8')
-            )
-            # print("Response Status Code:", response.status_code)
-            # print("Response Body:", response.text)
-            return response
+        response = requests.post(
+            url=f"http://{self.dst}{self.path}",
+            headers=self.headers,
+            data=self.body
+        )
+
+        return response
+
 
     def read_excel(self):
 
@@ -123,10 +112,12 @@ class excel_sender:
                 tmp_row=row[0]
                 # print("Row:", tmp_row)
                 self.parse(tmp_row)
-                response_all=self.send_1_poc()
-                # print(start_row)
-                # print(response_all.status_code)
-                # print(response_all.text)
+                try:             # v1.4,异常退出并报错
+                    response_all=self.send_1_poc()
+                except Exception as e:
+                    print("第" + str(start_row) + "行发送异常，请检查后重新发送！")
+                    break
+
 
                 ws.cell(row=start_row, column=col1, value=response_all.text)
 
@@ -143,6 +134,7 @@ class excel_sender:
                     ws.cell(row=start_row, column=col1 + 2, value=match_ct.group(1))
 
                 wb.save(output_file_path)
+            print("第"+str(start_row)+"行发送完成！")      #v1.4，打印行号
             start_row += 1
             time.sleep(0.2)
 
