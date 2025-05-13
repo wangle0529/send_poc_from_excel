@@ -1,9 +1,6 @@
-from urllib.parse import unquote
 from openpyxl import load_workbook
-from urllib.parse import urlencode
 import time
 import argparse
-import json
 import requests
 import re
 
@@ -22,12 +19,14 @@ class excel_sender:
     def parse(self,raw_request):
         #解析一条poc
         # 解码URL编码的字符
-        # decoded_request = unquote(raw_request)
         decoded_request = raw_request
+        decoded_request = decoded_request.replace('_x000D_','')     # v1.5 excel中的换行符_x000D_
 
-        # 分离请求头和请求体
-        header_body_split = decoded_request.split(
-            '\r\n\r\n') if '\r\n\r\n' in decoded_request else decoded_request.split('\n\n')
+        if '\r\n\r\n' in decoded_request:
+            header_body_split = decoded_request.split('\r\n\r\n')
+        else:
+            header_body_split = decoded_request.split('\n\n')
+
         headers_str = header_body_split[0]
         body_str = ""
 
@@ -36,9 +35,6 @@ class excel_sender:
             if i>0:
                 body_str=body_str+"\n"+header_body_split[i]     #增加请求体多个空行处理，v1.1
 
-
-        # print(headers_str)
-        # print(body_str)
 
         # 解析请求头
         self.headers = {}
@@ -50,32 +46,14 @@ class excel_sender:
                 key, value = line.split(': ', 1)
                 self.headers[key] = value
             elif re.match(r'.*:$', line) :        #处理请求头没有value,v1.2
-                # print(line)
                 key,value= line.split(':',1)
-                # print(key)
                 self.headers[key] = value
             else:
-                # first_line=line
-                # print(len(line))
                 self.method=line.split(" ")[0]
                 self.path=line.split(" ")[1]
 
-        # 解析请求体
-        # 注意：这里假设请求体是JSON或类似结构化的数据，如果不是，则需要根据实际格式调整解析方法
-        # try:
-        #     self.body = json.loads(body_str)
-        # except json.JSONDecodeError:
-        #     # 如果不是JSON格式，直接使用原始字符串
-        #     self.body = body_str
+
         self.body = body_str
-        # 输出解析结果
-        # print("Headers:")
-        # print(self.headers)
-        # print("Body:")
-        # print(self.body)
-        #
-        # print(self.method)
-        # print(self.path)
 
     def send_1_poc(self):
         #发送一条poc
@@ -110,7 +88,6 @@ class excel_sender:
         for row in ws.iter_rows(min_row=start_row, max_row=max_row,  min_col=col, max_col=col,values_only=True):
             if any(cell is not None for cell in row):  # 检查行是否包含非空单元格
                 tmp_row=row[0]
-                # print("Row:", tmp_row)
                 self.parse(tmp_row)
                 try:             # v1.4,异常退出并报错
                     response_all=self.send_1_poc()
@@ -134,6 +111,8 @@ class excel_sender:
                     ws.cell(row=start_row, column=col1 + 2, value=match_ct.group(1))
 
                 wb.save(output_file_path)
+            else:         #v1.5 解决结束不能退出问题
+                break
             print("第"+str(start_row)+"行发送完成！")      #v1.4，打印行号
             start_row += 1
             time.sleep(0.2)
