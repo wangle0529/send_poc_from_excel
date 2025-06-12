@@ -14,8 +14,6 @@ class excel_sender:
         self.output_column=output_column
         self.dst=dst
 
-
-
     def parse(self,raw_request):
         #解析一条poc
         # 解码URL编码的字符
@@ -28,13 +26,18 @@ class excel_sender:
             header_body_split = decoded_request.split('\n\n')
 
         headers_str = header_body_split[0]
+        # v1.7，ct支持br压缩，request默认不支持，直接替换，否则无法解析响应
+        headers_str = re.sub(r'accept-encoding:\s*.*', 'accept-encoding: gzip, deflate', headers_str, flags=re.IGNORECASE)
+
         body_str = ""
 
-
         for i in range(len(header_body_split)):
-            if i>0:
-                body_str=body_str+"\n"+header_body_split[i]     #增加请求体多个空行处理，v1.1
+            if i==1:
+                body_str=body_str + header_body_split[i]
+            if i>1:
+                body_str=body_str + "\n\n" + header_body_split[i]     #增加请求体多个空行处理，v1.1
 
+        body_str=body_str.replace('\n','\r\n')        #将换行统一替换成\r\n,v1.6
 
         # 解析请求头
         self.headers = {}
@@ -51,8 +54,6 @@ class excel_sender:
             else:
                 self.method=line.split(" ")[0]
                 self.path=line.split(" ")[1]
-
-
         self.body = body_str
 
     def send_1_poc(self):
@@ -63,7 +64,6 @@ class excel_sender:
             headers=self.headers,
             data=self.body
         )
-
         return response
 
 
@@ -84,7 +84,6 @@ class excel_sender:
         # 获取最大行号
         max_row = ws.max_row
 
-
         for row in ws.iter_rows(min_row=start_row, max_row=max_row,  min_col=col, max_col=col,values_only=True):
             if any(cell is not None for cell in row):  # 检查行是否包含非空单元格
                 tmp_row=row[0]
@@ -94,7 +93,6 @@ class excel_sender:
                 except Exception as e:
                     print("第" + str(start_row) + "行发送异常，请检查后重新发送！")
                     break
-
 
                 ws.cell(row=start_row, column=col1, value=response_all.text)
 
@@ -113,9 +111,9 @@ class excel_sender:
                 wb.save(output_file_path)
             else:         #v1.5 解决结束不能退出问题
                 break
-            print("第"+str(start_row)+"行发送完成！")      #v1.4，打印行号
+            print("第"+str(start_row)+"行发送完成，响应码："+str(response_all.status_code))      #v1.4，打印行号    v1.7，打印响应码
             start_row += 1
-            time.sleep(0.2)
+            time.sleep(0.3)
 
         wb.save(output_file_path)
 
@@ -137,13 +135,10 @@ def main():
     output_column=args.output_column
     dst=args.dst
 
-
     test=excel_sender(input_file,row,column,output_file,output_column,dst)
     print("检测中，请稍候......")
     test.read_excel()
     print("检测完成！")
-
-
 
 if __name__ == '__main__':
     main()
