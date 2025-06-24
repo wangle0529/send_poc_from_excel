@@ -1,8 +1,13 @@
 from openpyxl import load_workbook
+from openpyxl.styles import Alignment
 import time
 import argparse
 import requests
 import re
+
+from openpyxl.utils import get_column_letter
+from openpyxl.workbook import Workbook
+
 
 class excel_sender:
 
@@ -18,7 +23,8 @@ class excel_sender:
         #解析一条poc
         # 解码URL编码的字符
         decoded_request = raw_request
-        decoded_request = decoded_request.replace('_x000D_','')     # v1.5 excel中的换行符_x000D_
+        decoded_request = decoded_request.replace('_x000D_', '')     # v1.5 excel中的换行符_x000D_
+        decoded_request = decoded_request.replace('\u200b', '')      # v1.8零宽度空格
 
         if '\r\n\r\n' in decoded_request:
             header_body_split = decoded_request.split('\r\n\r\n')
@@ -56,14 +62,17 @@ class excel_sender:
                 self.path=line.split(" ")[1]
         self.body = body_str
 
+
     def send_1_poc(self):
         #发送一条poc
-        self.return_content=""
+        # self.return_content=""
         response = requests.post(
             url=f"http://{self.dst}{self.path}",
             headers=self.headers,
-            data=self.body
+            data=self.body,
+            allow_redirects=False        #v1.8.1禁止重定向，否则重定向次数过多会发送失败
         )
+
         return response
 
 
@@ -74,7 +83,16 @@ class excel_sender:
         sheet_name = 'Sheet1'  # 替换为你想要读取的工作表名称
 
         wb = load_workbook(filename=file_path)
-        ws = wb[sheet_name]
+        ws = wb[sheet_name]    #输入表
+
+    #v1.8，输出文件，如果不存在复制源文件，如果存在打开，可以中断之后再执行不会覆盖原来的数据。
+        try:
+            wb1 = load_workbook(output_file_path)
+        except FileNotFoundError:
+            wb1 = wb
+
+        ws1 = wb1.active
+
 
         # 定义遍历的行范围
         start_row = self.row  # 开始行（包含），基于1索引
@@ -87,35 +105,40 @@ class excel_sender:
         for row in ws.iter_rows(min_row=start_row, max_row=max_row,  min_col=col, max_col=col,values_only=True):
             if any(cell is not None for cell in row):  # 检查行是否包含非空单元格
                 tmp_row=row[0]
-                self.parse(tmp_row)
+                tmp_request=self.parse(tmp_row)        #不能删
+
+                # response_all = self.send_1_poc()     #测试用，可以打印报错
+
                 try:             # v1.4,异常退出并报错
                     response_all=self.send_1_poc()
                 except Exception as e:
                     print("第" + str(start_row) + "行发送异常，请检查后重新发送！")
                     break
 
-                ws.cell(row=start_row, column=col1, value=response_all.text)
-
-                ws.cell(row=start_row,column=col1+1,value=response_all.status_code)
+                ws1.cell(row=start_row, column=col1, value=response_all.text)
+                ws1.cell(row=start_row,column=col1+1,value=response_all.status_code)
 
                 pattern_ah = r"Request ID:  (\d{19})"
                 pattern_ct = r"event_id: ([a-fA-F0-9]{32})"              #v1.3,ct返回id
                 match_ah = re.search(pattern_ah, response_all.text)
                 if match_ah:
-                    ws.cell(row=start_row, column=col1+2, value=match_ah.group(1))
+                    ws1.cell(row=start_row, column=col1+2, value=match_ah.group(1))
 
                 match_ct = re.search(pattern_ct, response_all.text)
                 if match_ct:
-                    ws.cell(row=start_row, column=col1 + 2, value=match_ct.group(1))
+                    ws1.cell(row=start_row, column=col1 + 2, value=match_ct.group(1))
 
-                wb.save(output_file_path)
+                # wb1.save(output_file_path)  #v1.8.1 频繁保存大文件太慢
+
             else:         #v1.5 解决结束不能退出问题
+                # wb1.save(output_file_path)
                 break
             print("第"+str(start_row)+"行发送完成，响应码："+str(response_all.status_code))      #v1.4，打印行号    v1.7，打印响应码
             start_row += 1
-            time.sleep(0.3)
+            time.sleep(0.1)    #v1.8.1 太慢
 
-        wb.save(output_file_path)
+        ws1.column_dimensions[get_column_letter(col)].width=100    #v1.8设置报文所在列宽
+        wb1.save(output_file_path)
 
 def main():
 
