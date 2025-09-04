@@ -11,3 +11,6 @@ send_poc_from_excel.exe [-h] --input_file INPUT_FILE --row ROW --column COLUMN -
 ```shell
 .\send_poc_from_excel.exe --input_file D:\testfiles\123.xlsx --row 2 --column 2 --output_file D:\testfiles\789.xlsx --output_column 6 --dst 192.168.1.200:8080
 ```
+
+图形化界面，支持发送单条报文和批量发送
+<img width="816" height="639" alt="image" src="https://github.com/user-attachments/assets/bf763b60-2e59-4c58-9aff-c69799d6027f" />
