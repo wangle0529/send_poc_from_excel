@@ -1,4 +1,4 @@
-from tkinter import *
+# from tkinter import *
 import tkinter as tk
 from ExRepeater import ExRepeater
 from Repeater import Repeater
@@ -7,11 +7,11 @@ from Repeater import Repeater
 class main_window(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.250904')
+        self.title('WAF工具_v2.0.251011')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
-        self.set_window_icon(r"D:\Python\GUI\.venv\ico\waf.ico")
+        self.set_window_icon(r"D:\Data\Python\send_poc_from_excel\logo_256x256.ico")
 
         # 设置窗口最小和最大尺寸
         self.minsize(width=800, height=600)
@@ -22,7 +22,7 @@ class main_window(tk.Tk):
         self.grid_columnconfigure(1, weight=1)
 
         # 左边 Frame：固定宽度
-        self.left_frame = tk.Frame(self, width=200, relief="solid", borderwidth=1, bg="lightgray")
+        self.left_frame = tk.Frame(self, width=200, relief="solid", borderwidth=1, bg="light gray")
         self.left_frame.grid(row=0, column=0, sticky="ns")
         self.left_frame.grid_propagate(False)  # 禁止自动调整大小
 

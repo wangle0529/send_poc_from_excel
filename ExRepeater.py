@@ -133,6 +133,9 @@ class ExRepeater(tk.Frame):
         self.server_entry.insert(0, "127.0.0.1:8080")
 
         tk.Button(server_frame, text="发送", width=label_width, command=self.send_to_server).grid(
+            row=0, column=2, padx=0
+        )
+        tk.Button(server_frame, text="停止", width=label_width, command=self.stop_to_send).grid(
             row=0, column=3, padx=0
         )
 
@@ -167,6 +170,7 @@ class ExRepeater(tk.Frame):
             return
 
         self.sending = True
+        STOP_TO_SEND=0
 
         self.log("检测中，请稍候......")
 
@@ -195,9 +199,14 @@ class ExRepeater(tk.Frame):
     def on_task_complete(self):
         self.sending = False
         self.log("任务已完成")
+        send_poc_from_excel.STOP_TO_SEND=0
 
     def log(self, message):
         self.output_text.config(state="normal")
         self.output_text.insert("end", message + "\n")
         self.output_text.see("end")
         self.output_text.config(state="disabled")
+
+    # ==== 20251011，新增暂停功能 ====
+    def stop_to_send(self):
+        send_poc_from_excel.STOP_TO_SEND=1

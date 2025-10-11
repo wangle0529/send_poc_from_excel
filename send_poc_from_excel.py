@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
 SEND_INTERVAL=0.1   #发送间隔
+STOP_TO_SEND=0
 
 class excel_sender:
 
@@ -125,6 +126,12 @@ class excel_sender:
             max_row = ws.max_row
 
             for row in ws.iter_rows(min_row=start_row, max_row=max_row,  min_col=col, max_col=col,values_only=True):
+                if STOP_TO_SEND==1:
+                    self.log("发送已停止")
+                    print("发送已停止")  # 20251011,增加暂停功能
+                    # STOP_TO_SEND=0
+                    break
+
                 if any(cell is not None for cell in row):  # 检查行是否包含非空单元格
                     tmp_row=row[0]
                     self.parse(tmp_row)        #执行解析不能删，返回是为了测试
@@ -158,6 +165,7 @@ class excel_sender:
                 print("第"+str(start_row)+"行发送完成，响应码："+str(response_all.status_code))      #v1.4，打印行号    v1.7，打印响应码
                 start_row += 1
                 time.sleep(SEND_INTERVAL)    #v1.8.1 太慢，后面考虑增加输入参数
+                # print(STOP_TO_SEND)
 
             ws1.column_dimensions[get_column_letter(col)].width=100    #v1.8设置报文所在列宽
             wb1.save(output_file_path)

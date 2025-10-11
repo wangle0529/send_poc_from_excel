@@ -35,3 +35,6 @@ v2.0.250924
   1、增加了GUI
   2、增加了多个功能模块，Repeater用于发送单条报文，ExRepeater用于批量从excel中发送报文
   3、修复若干bug
+
+v2.0.251011
+  1、ExRepeater新增暂停功能
