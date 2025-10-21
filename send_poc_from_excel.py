@@ -7,6 +7,7 @@ from openpyxl.utils import get_column_letter
 
 SEND_INTERVAL=0.1   #发送间隔
 STOP_TO_SEND=0
+USE_HTTPS=0    # v20251021支持https功能
 
 class excel_sender:
 
@@ -90,12 +91,19 @@ class excel_sender:
         #发送一条poc
         # self.return_content="
         # print(self.method)
+
+        # v20251021支持https功能
+        if USE_HTTPS:
+            url = f"https://{self.dst}{self.path}"
+        else:
+            url = f"http://{self.dst}{self.path}"
         response = requests.request(
             method=self.method,         #v1.8.3,选择报文里的请求方法
-            url=f"http://{self.dst}{self.path}",
+            url=url,
             headers=self.headers,
             data=self.body,
-            allow_redirects=False        #v1.8.1禁止重定向，否则重定向次数过多会发送失败
+            allow_redirects=False,        #v1.8.1禁止重定向，否则重定向次数过多会发送失败
+            verify=False
         )
 
         return response

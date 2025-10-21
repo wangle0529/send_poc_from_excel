@@ -2,9 +2,9 @@
 
 import requests
 import re
-import time
 import tkinter as tk
-from tkinter import filedialog, ttk
+
+
 
 
 class Repeater(tk.Frame):
@@ -34,12 +34,17 @@ class Repeater(tk.Frame):
         self.server_entry.grid(row=0, column=1, sticky="ew", padx=5)
         self.server_entry.insert(0, "127.0.0.1:8080")
 
+        # v20251021支持https功能
+        self.use_https=tk.IntVar()
+        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https,command=self.send_https).grid(row=0, column=2, padx=5)
+        # print(self.use_https)
+
         tk.Button(
             server_frame,
             text="发送",
             width=10,
             command=self.on_send_click  # 绑定发送事件
-        ).grid(row=0, column=2, padx=5)
+        ).grid(row=0, column=3, padx=5)
 
         # ====== 2. 输入数据标签 ======
         tk.Label(
@@ -146,17 +151,28 @@ class Repeater(tk.Frame):
 
         self.body = body_str
 
+    # v20251021支持https功能
+    def send_https(self):
+        self.is_use_https=self.use_https.get()
+        # return self.is_use_https
+
+
     # ==================== 发送单条请求 ====================
     def send_1_poc(self):
         try:
-            url = f"http://{self.dst}{self.path}"
+            # v20251021支持https功能
+            if self.is_use_https:
+                url=f"https://{self.dst}{self.path}"
+            else:
+                url = f"http://{self.dst}{self.path}"
             response = requests.request(
                 method=self.method,      #v1.8.3,选择报文里的请求方法
                 url=url,
                 headers=self.headers,
                 data=self.body,
                 allow_redirects=False,
-                timeout=10
+                timeout=10,
+                verify=False
             )
             return response
         except requests.exceptions.RequestException as e:

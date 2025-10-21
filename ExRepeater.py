@@ -132,11 +132,18 @@ class ExRepeater(tk.Frame):
         self.server_entry.grid(row=0, column=1, sticky="ew", padx=0)
         self.server_entry.insert(0, "127.0.0.1:8080")
 
+        # v20251021支持https功能
+        self.use_https=tk.IntVar()
+
+        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https,command=self.send_https).grid(row=0, column=2, padx=5)
+        # print(self.use_https)
+
+
         tk.Button(server_frame, text="发送", width=label_width, command=self.send_to_server).grid(
-            row=0, column=2, padx=0
+            row=0, column=3, padx=0
         )
         tk.Button(server_frame, text="停止", width=label_width, command=self.stop_to_send).grid(
-            row=0, column=3, padx=0
+            row=0, column=4, padx=0
         )
 
         # ====== 5. 输出日志窗口 + 滚动条 ======
@@ -150,6 +157,11 @@ class ExRepeater(tk.Frame):
 
         self.output_text.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+        # ===============v20251021支持https
+    def send_https(self):
+        send_poc_from_excel.USE_HTTPS = self.use_https.get()
+        # return self.is_use_https
 
     # ==== 功能函数 ====
     def browse_input_file(self):

@@ -7,7 +7,7 @@ from Repeater import Repeater
 class main_window(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.251011')
+        self.title('WAF工具_v2.0.251021')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
@@ -50,7 +50,8 @@ class main_window(tk.Tk):
         # self.right_content_frames["aaa"] = tk.Frame(self.right_frame, bg="gray")
 
         # 初始化显示第一个页面
-        self.show_frame("Repeater")
+        self.show_frame("ExRepeater")
+
 
         # 生成左边按钮
         for i, text in enumerate(self.left_button_texts):
@@ -72,7 +73,7 @@ class main_window(tk.Tk):
             frame.grid_forget()
 
         # 显示目标frame并填满 right_frame
-        self.right_content_frames[page_name].grid(row=0, column=0, sticky="nsew")
+            self.right_content_frames[page_name].grid(row=0, column=0, sticky="nsew")
 
 if __name__ == '__main__':
     app = main_window()
