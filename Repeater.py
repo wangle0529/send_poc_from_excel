@@ -106,6 +106,8 @@ class Repeater(tk.Frame):
         self.path = ""
         self.http_version = "1.1"
 
+        self.is_use_https=0
+
     # ==================== 核心方法：解析 HTTP 请求 ====================
     def parse(self, raw_request):
         decoded_request = raw_request.replace('_x000D_', '').replace('\u200b', '')
