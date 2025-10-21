@@ -13,4 +13,7 @@ send_poc_from_excel.exe [-h] --input_file INPUT_FILE --row ROW --column COLUMN -
 ```
 
 ## 图形化界面，支持发送单条报文和批量发送
-<img width="816" height="639" alt="image" src="https://github.com/user-attachments/assets/bf763b60-2e59-4c58-9aff-c69799d6027f" />
+<img width="766" height="606" alt="image" src="https://github.com/user-attachments/assets/543bee90-f882-4c58-83f0-bffbfeef9fa0" />
+
+<img width="768" height="607" alt="image" src="https://github.com/user-attachments/assets/9d1b5699-6a20-439d-aaec-5bcf02891604" />
+
