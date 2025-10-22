@@ -160,8 +160,8 @@ class ExRepeater(tk.Frame):
 
         # ===============v20251021支持https
     def send_https(self):
-        send_poc_from_excel.USE_HTTPS = self.use_https.get()
-        # return self.is_use_https
+        return self.use_https.get()
+
 
     # ==== 功能函数 ====
     def browse_input_file(self):
@@ -196,9 +196,14 @@ class ExRepeater(tk.Frame):
             interval = float(self.input_col_interval.get())
 
             send_poc_from_excel.SEND_INTERVAL=interval/1000
-            # print(send_poc_from_excel.SEND_INTERVAL)
 
-            test=excel_sender(input_file,row,column,output_file,output_column,dst,log_func=self.log,finish_callback=self.on_task_complete)
+#--------v20251022,通过传参实现https--------
+            if self.send_https():
+                https='y'
+            else:
+                https='n'
+
+            test=excel_sender(input_file,row,column,output_file,output_column,dst,https,log_func=self.log,finish_callback=self.on_task_complete)
             thread = threading.Thread(target=test.read_excel)
             thread.daemon = True  # 设置为守护线程，主线程退出时自动结束
             thread.start()

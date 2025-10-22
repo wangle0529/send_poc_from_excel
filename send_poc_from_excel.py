@@ -7,11 +7,10 @@ from openpyxl.utils import get_column_letter
 
 SEND_INTERVAL=0.1   #发送间隔
 STOP_TO_SEND=0
-USE_HTTPS=0    # v20251021支持https功能
 
 class excel_sender:
 
-    def __init__(self,input_file,row,column,output_file,output_column,dst, log_func=None, finish_callback=None):
+    def __init__(self,input_file,row,column,output_file,output_column,dst, use_https,log_func=None, finish_callback=None):
         self.input_file=input_file
         self.row=row
         self.column=column
@@ -20,6 +19,7 @@ class excel_sender:
         self.dst=dst
         self.log = log_func if log_func else print  # 使用传入的 log 函数，否则默认 print
         self.finish = finish_callback if finish_callback else lambda: None  # 完成回调
+        self.use_https=use_https       #----------------v20251022，增加https参数-----------------#
 
 
     def parse(self,raw_request):
@@ -92,8 +92,8 @@ class excel_sender:
         # self.return_content="
         # print(self.method)
 
-        # v20251021支持https功能
-        if USE_HTTPS:
+        # v20251022支持https功能
+        if self.use_https in ['yes', 'y', 'Yes', 'Y']:
             url = f"https://{self.dst}{self.path}"
         else:
             url = f"http://{self.dst}{self.path}"
@@ -192,6 +192,8 @@ def main():
     parser.add_argument('--output_file', type=str, help='输出文件', required=True)
     parser.add_argument('--output_column', type=int, help='响应内容、状态码、Request ID，输出三列', required=True)
     parser.add_argument('--dst', type=str, help='站点地址，ip:port，不支持https', required=True)
+    #----------------v20251022，增加https参数-----------------#
+    parser.add_argument('--use_https', type=str, help='是否使用https，Yes/No?', required=False,default='No',choices=['yes', 'no', 'y', 'n', 'Yes', 'No', 'Y', 'N'])
 
     args = parser.parse_args()
     input_file=args.input_file
