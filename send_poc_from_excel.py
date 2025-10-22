@@ -53,6 +53,7 @@ class excel_sender:
         self.body=""
         self.method=""
         self.path=""
+        self.real_content_length = 0
 
         ##########v1.8.2，重构，调整匹配顺序，支持请求头冒号后面没有空格，冒号后面没有值####################
         request_line = headers_str.splitlines()[0]
@@ -74,6 +75,15 @@ class excel_sender:
                 self.headers[key] = value.strip()  # 建议 strip
 
         self.body = body_str
+
+        self.real_content_length = len(body_str)
+
+        ##### v20251022，body为空但存在content-length时，删除content-length。body不为空时，python已经自动处理
+        if self.real_content_length == 0:
+            # 删除所有大小写变体的 Content-Length 头
+            keys_to_delete = [k for k in self.headers if k.lower() == 'content-length']
+            for k in keys_to_delete:
+                del self.headers[k]
 
 
         # ==================== v1.8.2：自动添加 User-Agent，避免自动添加python-request头，触发爬虫规则 ====================

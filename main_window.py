@@ -50,7 +50,7 @@ class main_window(tk.Tk):
         # self.right_content_frames["aaa"] = tk.Frame(self.right_frame, bg="gray")
 
         # 初始化显示第一个页面
-        self.show_frame("ExRepeater")
+        self.show_frame("Repeater")
 
 
         # 生成左边按钮

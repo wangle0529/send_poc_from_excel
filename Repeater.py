@@ -32,7 +32,7 @@ class Repeater(tk.Frame):
 
         self.server_entry = tk.Entry(server_frame)
         self.server_entry.grid(row=0, column=1, sticky="ew", padx=5)
-        self.server_entry.insert(0, "127.0.0.1:8080")
+        self.server_entry.insert(0, "10.50.81.44:8888")
 
         # v20251021支持https功能
         self.use_https=tk.IntVar()
@@ -47,8 +47,12 @@ class Repeater(tk.Frame):
         ).grid(row=0, column=3, padx=5)
 
         # ====== 2. 输入数据标签 ======
+        input_frame = tk.Frame(self, bg="white")
+        input_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+        input_frame.grid_columnconfigure(1, weight=1)
+
         tk.Label(
-            self,
+            input_frame,
             text="请求:",
             anchor="w",
             bg="white",
@@ -102,6 +106,7 @@ class Repeater(tk.Frame):
         # --- 初始化网络请求变量 ---
         self.headers = {}
         self.body = ""
+        self.real_content_length = 0
         self.method = ""
         self.path = ""
         self.http_version = "1.1"
@@ -152,6 +157,14 @@ class Repeater(tk.Frame):
             self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 
         self.body = body_str
+        self.real_content_length=len(body_str)
+
+        ##### v20251022，body为空但存在content-length时，删除content-length。body不为空时，python已经自动处理
+        if self.real_content_length == 0:
+            # 删除所有大小写变体的 Content-Length 头
+            keys_to_delete = [k for k in self.headers if k.lower() == 'content-length']
+            for k in keys_to_delete:
+                del self.headers[k]
 
     # v20251021支持https功能
     def send_https(self):
