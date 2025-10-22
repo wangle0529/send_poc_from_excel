@@ -44,3 +44,4 @@ v2.0.251021
 
 v2.0.251022
   1、优化ExRepeater模块https功能
+  2、优化Content-Length处理
