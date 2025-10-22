@@ -7,7 +7,7 @@ from Repeater import Repeater
 class main_window(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.251021')
+        self.title('WAF工具_v2.0.251022')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
