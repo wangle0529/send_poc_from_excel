@@ -212,8 +212,9 @@ def main():
     output_file=args.output_file
     output_column=args.output_column
     dst=args.dst
+    https=args.use_https
 
-    test=excel_sender(input_file,row,column,output_file,output_column,dst)
+    test=excel_sender(input_file,row,column,output_file,output_column,dst,https)
     print("检测中，请稍候......")
     test.read_excel()
     print("检测完成！")
