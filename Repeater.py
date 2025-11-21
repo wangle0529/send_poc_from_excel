@@ -32,7 +32,7 @@ class Repeater(tk.Frame):
 
         self.server_entry = tk.Entry(server_frame)
         self.server_entry.grid(row=0, column=1, sticky="ew", padx=5)
-        self.server_entry.insert(0, "10.50.81.44:8888")
+        self.server_entry.insert(0, "127.0.0.1:8080")
 
         # v20251021支持https功能
         self.use_https=tk.IntVar()
