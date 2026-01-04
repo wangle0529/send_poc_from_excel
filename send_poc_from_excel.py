@@ -56,7 +56,7 @@ class excel_sender:
         self.real_content_length = 0
 
         ##########v1.8.2，重构，调整匹配顺序，支持请求头冒号后面没有空格，冒号后面没有值####################
-        request_line = headers_str.splitlines()[0]
+        request_line = headers_str.splitlines()[0].strip()     #请求行末尾空格处理
         match = re.match(r'^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|TRACE|CONNECT)\s+([^\s]+)\s+HTTP/([\d.]+)$',
                          request_line)
         if match:

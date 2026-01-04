@@ -130,8 +130,10 @@ class Repeater(tk.Frame):
 
         # 提取请求行
         lines = headers_str.strip().splitlines()
-        request_line = lines[0]
+        request_line = lines[0].strip()       #请求行末尾空格处理
+        print(request_line)
         match = re.match(r'^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|TRACE|CONNECT)\s+([^\s]+)\s+HTTP/([\d.]+)$', request_line)
+        print(match)
         if match:
             self.method, self.path, self.http_version = match.groups()
         else:
