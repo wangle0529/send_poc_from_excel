@@ -223,6 +223,9 @@ class Repeater(tk.Frame):
 
         # 6. 显示结果
         if isinstance(response, requests.Response):
+
+            response.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题
+
             result = (
                 f"=== 响应状态 ===\n"
                 f"Status Code: {response.status_code}\n"
