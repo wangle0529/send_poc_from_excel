@@ -7,11 +7,11 @@ from Repeater import Repeater
 class main_window(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.251022')
+        self.title('WAF工具_v2.0.260306')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
-        self.set_window_icon(r"D:\Data\Python\send_poc_from_excel\logo_256x256.ico")
+        self.set_window_icon(r"D:\Data\Python\send_poc_from_excel\favicon_256x256.ico")
 
         # 设置窗口最小和最大尺寸
         self.minsize(width=800, height=600)

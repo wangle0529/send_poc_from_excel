@@ -156,6 +156,7 @@ class excel_sender:
 
                     try:             # v1.4,异常退出并报错
                         response_all=self.send_1_poc()
+                        response_all.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题'
                     except Exception as e:
                         self.log("第" + str(start_row) + "行发送异常，请检查后重新发送！")
                         print("第" + str(start_row) + "行发送异常，请检查后重新发送！")
