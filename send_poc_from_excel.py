@@ -1,9 +1,12 @@
 import time
 import argparse
-import requests
+import urllib3
+from urllib3._collections import HTTPHeaderDict
 import re
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 SEND_INTERVAL=0.1   #发送间隔
 STOP_TO_SEND=0
@@ -49,7 +52,7 @@ class excel_sender:
         body_str=body_str.replace('\n','\r\n')        #将换行统一替换成\r\n,v1.6
 
         # 解析请求头
-        self.headers = {}
+        self.headers = HTTPHeaderDict()  # 使用HTTPHeaderDict存储多个重名header
         self.body=""
         self.method=""
         self.path=""
@@ -66,13 +69,13 @@ class excel_sender:
             line = line.strip()  # 建议加 strip
             if re.match(r'^[^:]+:$', line):  # 更精确：以 : 结尾，且前面无空格
                 key, value = line.split(':', 1)
-                self.headers[key] = value  # value == ""
+                self.headers.add(key, value.strip())  # value == ""
             elif ': ' in line:
                 key, value = line.split(': ', 1)
-                self.headers[key] = value
+                self.headers.add(key, value)
             elif ':' in line:
                 key, value = line.split(':', 1)
-                self.headers[key] = value.strip()  # 建议 strip
+                self.headers.add(key, value.strip())  # 建议 strip
 
         self.body = body_str
 
@@ -81,18 +84,17 @@ class excel_sender:
         ##### v20251022，body为空但存在content-length时，删除content-length。body不为空时，python已经自动处理
         if self.real_content_length == 0:
             # 删除所有大小写变体的 Content-Length 头
-            keys_to_delete = [k for k in self.headers if k.lower() == 'content-length']
-            for k in keys_to_delete:
-                del self.headers[k]
+            keys_to_delete = [key for key in self.headers if key.lower() == 'content-length']
+            for key in keys_to_delete:
+                del self.headers[key]
 
 
         # ==================== v1.8.2：自动添加 User-Agent，避免自动添加python-request头，触发爬虫规则 ====================
         # 检查是否已存在 User-Agent（忽略大小写）
-        has_user_agent = any(key.lower() == 'user-agent' for key in self.headers.keys())
+        has_user_agent = any(key.lower() == 'user-agent' for key in self.headers)
         if not has_user_agent:
             # 可以自定义你喜欢的 User-Agent
-            self.headers[
-                'User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            self.headers.add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
         # ==================== 结束新增 ====================
 
     # import requests
@@ -107,16 +109,39 @@ class excel_sender:
             url = f"https://{self.dst}{self.path}"
         else:
             url = f"http://{self.dst}{self.path}"
-        response = requests.request(
-            method=self.method,         #v1.8.3,选择报文里的请求方法
-            url=url,
-            headers=self.headers,
-            data=self.body,
-            allow_redirects=False,        #v1.8.1禁止重定向，否则重定向次数过多会发送失败
-            verify=False
-        )
-
-        return response
+        
+        try:
+            # 使用urllib3发送请求
+            http = urllib3.PoolManager()
+            response = http.request(
+                method=self.method,         #v1.8.3,选择报文里的请求方法
+                url=url,
+                headers=self.headers,
+                body=self.body,
+                redirect=False,        #v1.8.1禁止重定向，否则重定向次数过多会发送失败
+                retries=False,
+                timeout=10  # 设置10秒超时
+            )
+            
+            # 包装响应对象，使其类似于requests.Response
+            class Urllib3Response:
+                def __init__(self, urllib3_response):
+                    self.status_code = urllib3_response.status
+                    self.headers = urllib3_response.getheaders()
+                    self.text = urllib3_response.data.decode('utf-8', errors='ignore')
+                    self.url = url
+            
+            return Urllib3Response(response)
+        except Exception as e:
+            # 发生异常时返回一个错误对象，而不是抛出异常
+            class ErrorResponse:
+                def __init__(self, error):
+                    self.status_code = 0
+                    self.headers = {}
+                    self.text = f"请求失败: {str(error)}"
+                    self.url = url
+            
+            return ErrorResponse(e)
 
     def read_excel(self):
         try:
@@ -154,13 +179,9 @@ class excel_sender:
                     tmp_row=row[0]
                     self.parse(tmp_row)        #执行解析不能删，返回是为了测试
 
-                    try:             # v1.4,异常退出并报错
-                        response_all=self.send_1_poc()
-                        response_all.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题'
-                    except Exception as e:
-                        self.log("第" + str(start_row) + "行发送异常，请检查后重新发送！")
-                        print("第" + str(start_row) + "行发送异常，请检查后重新发送！")
-                        break
+                    # v1.4,异常退出并报错 - 现在使用try-except捕获异常，确保循环继续
+                    response_all=self.send_1_poc()
+                    # response_all.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题'
 
                     ws1.cell(row=start_row, column=col1, value=response_all.text)
                     ws1.cell(row=start_row,column=col1+1,value=response_all.status_code)

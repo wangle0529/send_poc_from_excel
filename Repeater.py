@@ -1,8 +1,11 @@
 #v2.0.250827 新增功能
 
-import requests
+import urllib3
+from urllib3._collections import HTTPHeaderDict
 import re
 import tkinter as tk
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 
@@ -138,7 +141,7 @@ class Repeater(tk.Frame):
             raise ValueError("无效的请求行")
 
         # 解析请求头
-        self.headers = {}
+        self.headers = HTTPHeaderDict()  # 使用HTTPHeaderDict存储多个重名header
         for line in lines[1:]:
             line = line.strip()
             if not line:
@@ -150,11 +153,12 @@ class Repeater(tk.Frame):
                 value = value.strip()
             else:
                 continue
-            self.headers[key] = value
+            self.headers.add(key, value)
 
         # 自动添加 User-Agent，防止request自动添加python头触发规则
-        if 'User-Agent' not in self.headers and 'user-agent' not in self.headers:
-            self.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        has_user_agent = any(key.lower() == 'user-agent' for key in self.headers)
+        if not has_user_agent:
+            self.headers.add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
 
         self.body = body_str
         self.real_content_length=len(body_str)
@@ -162,9 +166,9 @@ class Repeater(tk.Frame):
         ##### v20251022，body为空但存在content-length时，删除content-length。body不为空时，python已经自动处理
         if self.real_content_length == 0:
             # 删除所有大小写变体的 Content-Length 头
-            keys_to_delete = [k for k in self.headers if k.lower() == 'content-length']
-            for k in keys_to_delete:
-                del self.headers[k]
+            keys_to_delete = [key for key in self.headers if key.lower() == 'content-length']
+            for key in keys_to_delete:
+                del self.headers[key]
 
     # v20251021支持https功能
     def send_https(self):
@@ -180,17 +184,29 @@ class Repeater(tk.Frame):
                 url=f"https://{self.dst}{self.path}"
             else:
                 url = f"http://{self.dst}{self.path}"
-            response = requests.request(
+            
+            # 使用urllib3发送请求
+            http = urllib3.PoolManager()
+            response = http.request(
                 method=self.method,      #v1.8.3,选择报文里的请求方法
                 url=url,
                 headers=self.headers,
-                data=self.body,
-                allow_redirects=False,
+                body=self.body,
+                redirect=False,
                 timeout=10,
-                verify=False
+                retries=False
             )
-            return response
-        except requests.exceptions.RequestException as e:
+            
+            # 包装响应对象，使其类似于requests.Response
+            class Urllib3Response:
+                def __init__(self, urllib3_response):
+                    self.status_code = urllib3_response.status
+                    self.headers = dict(urllib3_response.getheaders())
+                    self.text = urllib3_response.data.decode('utf-8', errors='ignore')
+                    self.url = url
+            
+            return Urllib3Response(response)
+        except Exception as e:
             return f"请求失败: {e}"
 
     # ==================== 发送按钮点击事件 ====================
@@ -222,16 +238,16 @@ class Repeater(tk.Frame):
         response = self.send_1_poc()
 
         # 6. 显示结果
-        if isinstance(response, requests.Response):
+        if hasattr(response, 'status_code'):
 
-            response.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题
+            # response.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题
 
             result = (
                 f"=== 响应状态 ===\n"
                 f"Status Code: {response.status_code}\n"
                 f"URL: {response.url}\n\n"
                 f"=== 响应头 ===\n"
-                f"{dict(response.headers)}\n\n"
+                f"{response.headers}\n\n"
                 f"=== 响应体 ===\n"
                 f"{response.text}"
             )
