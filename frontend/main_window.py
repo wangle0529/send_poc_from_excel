@@ -9,7 +9,7 @@ class MainWindow(tk.Tk):
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
-        self.set_window_icon(r"favicon_256x256.ico")
+        self.set_window_icon(r"D:\private\send_poc_from_excel\favicon_256x256.ico")
 
         # 设置窗口最小和最大尺寸
         self.minsize(width=800, height=600)
