@@ -1,17 +1,15 @@
-# from tkinter import *
 import tkinter as tk
-from ExRepeater import ExRepeater
-from Repeater import Repeater
+from frontend.repeater import Repeater
+from frontend.ex_repeater import ExRepeater
 
-
-class main_window(tk.Tk):
+class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.260306')
+        self.title('WAF工具_v2.0.260427')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
-        self.set_window_icon(r"D:\Data\Python\send_poc_from_excel\favicon_256x256.ico")
+        self.set_window_icon(r"favicon_256x256.ico")
 
         # 设置窗口最小和最大尺寸
         self.minsize(width=800, height=600)
@@ -47,11 +45,9 @@ class main_window(tk.Tk):
         self.right_content_frames = {}
         self.right_content_frames["ExRepeater"] = ExRepeater(self.right_frame)
         self.right_content_frames["Repeater"] = Repeater(self.right_frame)   #v2.0.250827,增加Repeater模块
-        # self.right_content_frames["aaa"] = tk.Frame(self.right_frame, bg="gray")
 
         # 初始化显示第一个页面
         self.show_frame("Repeater")
-
 
         # 生成左边按钮
         for i, text in enumerate(self.left_button_texts):
@@ -73,8 +69,9 @@ class main_window(tk.Tk):
             frame.grid_forget()
 
         # 显示目标frame并填满 right_frame
+        if page_name in self.right_content_frames:
             self.right_content_frames[page_name].grid(row=0, column=0, sticky="nsew")
 
 if __name__ == '__main__':
-    app = main_window()
+    app = MainWindow()
     app.mainloop()

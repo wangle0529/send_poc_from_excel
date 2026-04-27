@@ -1,10 +1,8 @@
-# ExRepeater.py
-import send_poc_from_excel
 import tkinter as tk
 from tkinter import filedialog, ttk
-from send_poc_from_excel import *
 from openpyxl.utils import get_column_letter, column_index_from_string
 import threading
+from backend.excel_processor import ExcelProcessor
 
 def generate_excel_columns():
     columns = []
@@ -118,7 +116,6 @@ class ExRepeater(tk.Frame):
         self.input_col_interval = ttk.Combobox(row_col_frame, values=[100*int(i) for i in range(1, 21)], width=10,state="readonly")
         self.input_col_interval.grid(row=0, column=3, sticky="w", padx=0)
         self.input_col_interval.set(200)
-        # self.input_col_interval.config(state='disabled')
 
         # ====== 4. 服务器地址 + 发送按钮 ======
         server_frame = tk.Frame(self)
@@ -135,9 +132,7 @@ class ExRepeater(tk.Frame):
         # v20251021支持https功能
         self.use_https=tk.IntVar()
 
-        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https,command=self.send_https).grid(row=0, column=2, padx=5)
-        # print(self.use_https)
-
+        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https).grid(row=0, column=2, padx=5)
 
         tk.Button(server_frame, text="发送", width=label_width, command=self.send_to_server).grid(
             row=0, column=3, padx=0
@@ -158,10 +153,8 @@ class ExRepeater(tk.Frame):
         self.output_text.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # ===============v20251021支持https
-    def send_https(self):
-        return self.use_https.get()
-
+        # 初始化处理器
+        self.processor = None
 
     # ==== 功能函数 ====
     def browse_input_file(self):
@@ -182,7 +175,6 @@ class ExRepeater(tk.Frame):
             return
 
         self.sending = True
-        STOP_TO_SEND=0
 
         self.log("检测中，请稍候......")
 
@@ -193,30 +185,36 @@ class ExRepeater(tk.Frame):
             output_file = self.output_path.get()
             output_column = column_index_from_string(self.output_col_combo.get())
             dst = self.server_entry.get()
-            interval = float(self.input_col_interval.get())
+            interval = float(self.input_col_interval.get()) / 1000
 
-            send_poc_from_excel.SEND_INTERVAL=interval/1000
+            # 处理 HTTPS 选项
+            https = 'y' if self.use_https.get() else 'n'
 
-#--------v20251022,通过传参实现https--------
-            if self.send_https():
-                https='y'
-            else:
-                https='n'
+            # 创建处理器
+            self.processor = ExcelProcessor(
+                input_file=input_file,
+                row=row,
+                column=column,
+                output_file=output_file,
+                output_column=output_column,
+                dst=dst,
+                use_https=https,
+                log_func=self.log,
+                finish_callback=self.on_task_complete,
+                send_interval=interval
+            )
 
-            test=excel_sender(input_file,row,column,output_file,output_column,dst,https,log_func=self.log,finish_callback=self.on_task_complete)
-            thread = threading.Thread(target=test.read_excel)
+            # 启动线程
+            thread = threading.Thread(target=self.processor.process)
             thread.daemon = True  # 设置为守护线程，主线程退出时自动结束
             thread.start()
 
         except Exception as e:
             self.log(f"启动任务失败: {e}")
 
-
-
     def on_task_complete(self):
         self.sending = False
         self.log("任务已完成")
-        send_poc_from_excel.STOP_TO_SEND=0
 
     def log(self, message):
         self.output_text.config(state="normal")
@@ -226,4 +224,6 @@ class ExRepeater(tk.Frame):
 
     # ==== 20251011，新增暂停功能 ====
     def stop_to_send(self):
-        send_poc_from_excel.STOP_TO_SEND=1
+        if self.processor:
+            self.processor.stop()
+            self.log("已停止发送")

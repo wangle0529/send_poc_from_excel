@@ -1,14 +1,6 @@
-#v2.0.250827 新增功能
-
-import urllib3
-from urllib3._collections import HTTPHeaderDict
-import re
 import tkinter as tk
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-
+from backend.http_client import HTTPClient
+from backend.request_parser import RequestParser
 
 class Repeater(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -39,8 +31,7 @@ class Repeater(tk.Frame):
 
         # v20251021支持https功能
         self.use_https=tk.IntVar()
-        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https,command=self.send_https).grid(row=0, column=2, padx=5)
-        # print(self.use_https)
+        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https).grid(row=0, column=2, padx=5)
 
         tk.Button(
             server_frame,
@@ -106,108 +97,9 @@ class Repeater(tk.Frame):
         self.output_text.grid(row=0, column=0, sticky="nsew")
         v_scroll2.grid(row=0, column=1, sticky="ns")
 
-        # --- 初始化网络请求变量 ---
-        self.headers = {}
-        self.body = ""
-        self.real_content_length = 0
-        self.method = ""
-        self.path = ""
-        self.http_version = "1.1"
-
-        self.is_use_https=0
-
-    # ==================== 核心方法：解析 HTTP 请求 ====================
-    def parse(self, raw_request):
-        decoded_request = raw_request.replace('_x000D_', '').replace('\u200b', '')
-
-        if '\r\n\r\n' in decoded_request:
-            header_body_split = decoded_request.split('\r\n\r\n', 1)
-        else:
-            header_body_split = decoded_request.split('\n\n', 1)
-
-        headers_str = header_body_split[0]
-        body_str = header_body_split[1] if len(header_body_split) > 1 else ""
-
-        # 修复换行
-        body_str = body_str.replace('\n', '\r\n')
-
-        # 提取请求行
-        lines = headers_str.strip().splitlines()
-        request_line = lines[0].strip()       #请求行末尾空格处理
-        match = re.match(r'^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|TRACE|CONNECT)\s+([^\s]+)\s+HTTP/([\d.]+)$', request_line)
-        if match:
-            self.method, self.path, self.http_version = match.groups()
-        else:
-            raise ValueError("无效的请求行")
-
-        # 解析请求头
-        self.headers = HTTPHeaderDict()  # 使用HTTPHeaderDict存储多个重名header
-        for line in lines[1:]:
-            line = line.strip()
-            if not line:
-                continue
-            if ': ' in line:
-                key, value = line.split(': ', 1)
-            elif ':' in line:
-                key, value = line.split(':', 1)
-                value = value.strip()
-            else:
-                continue
-            self.headers.add(key, value)
-
-        # 自动添加 User-Agent，防止request自动添加python头触发规则
-        has_user_agent = any(key.lower() == 'user-agent' for key in self.headers)
-        if not has_user_agent:
-            self.headers.add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-
-        self.body = body_str
-        self.real_content_length=len(body_str)
-
-        ##### v20251022，body为空但存在content-length时，删除content-length。body不为空时，python已经自动处理
-        if self.real_content_length == 0:
-            # 删除所有大小写变体的 Content-Length 头
-            keys_to_delete = [key for key in self.headers if key.lower() == 'content-length']
-            for key in keys_to_delete:
-                del self.headers[key]
-
-    # v20251021支持https功能
-    def send_https(self):
-        self.is_use_https=self.use_https.get()
-        # return self.is_use_https
-
-
-    # ==================== 发送单条请求 ====================
-    def send_1_poc(self):
-        try:
-            # v20251021支持https功能
-            if self.is_use_https:
-                url=f"https://{self.dst}{self.path}"
-            else:
-                url = f"http://{self.dst}{self.path}"
-            
-            # 使用urllib3发送请求
-            http = urllib3.PoolManager()
-            response = http.request(
-                method=self.method,      #v1.8.3,选择报文里的请求方法
-                url=url,
-                headers=self.headers,
-                body=self.body,
-                redirect=False,
-                timeout=10,
-                retries=False
-            )
-            
-            # 包装响应对象，使其类似于requests.Response
-            class Urllib3Response:
-                def __init__(self, urllib3_response):
-                    self.status_code = urllib3_response.status
-                    self.headers = dict(urllib3_response.getheaders())
-                    self.text = urllib3_response.data.decode('utf-8', errors='ignore')
-                    self.url = url
-            
-            return Urllib3Response(response)
-        except Exception as e:
-            return f"请求失败: {e}"
+        # 初始化客户端
+        self.http_client = HTTPClient()
+        self.parser = RequestParser()
 
     # ==================== 发送按钮点击事件 ====================
     def on_send_click(self):
@@ -229,19 +121,27 @@ class Repeater(tk.Frame):
 
         # 4. 解析请求
         try:
-            self.parse(content)
+            request_data = self.parser.parse(content)
         except Exception as e:
             self.log(f"解析失败：{e}")
             return
 
-        # 5. 发送请求
-        response = self.send_1_poc()
+        # 5. 构建 URL
+        if self.use_https.get():
+            url = f"https://{self.dst}{request_data['path']}"
+        else:
+            url = f"http://{self.dst}{request_data['path']}"
 
-        # 6. 显示结果
+        # 6. 发送请求
+        response = self.http_client.send_request(
+            method=request_data['method'],
+            url=url,
+            headers=request_data['headers'],
+            body=request_data['body']
+        )
+
+        # 7. 显示结果
         if hasattr(response, 'status_code'):
-
-            # response.encoding = 'utf-8'    #v2.0.260306,修复中文显示乱码问题
-
             result = (
                 f"=== 响应状态 ===\n"
                 f"Status Code: {response.status_code}\n"
