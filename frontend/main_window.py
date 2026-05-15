@@ -1,15 +1,28 @@
 import tkinter as tk
+import os
 from frontend.repeater import Repeater
 from frontend.ex_repeater import ExRepeater
+
+def get_version():
+    """从版本文件读取版本号"""
+    version_file = os.path.join(os.path.dirname(__file__), "..", "static", "version.txt")
+    try:
+        with open(version_file, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except Exception as e:
+        print(f"读取版本文件失败: {e}")
+        return "unknown"
 
 class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('WAF工具_v2.0.260427')
+        self.version = get_version()
+        self.title(f'WAF工具_v{self.version}')
         self.geometry('800x600')
 
         # 设置窗口图标（.ico 文件）
-        self.set_window_icon(r"D:\private\send_poc_from_excel\favicon_256x256.ico")
+        icon_path = os.path.join(os.path.dirname(__file__), "..", "static", "favicon_256x256.ico")
+        self.set_window_icon(icon_path)
 
         # 设置窗口最小和最大尺寸
         self.minsize(width=800, height=600)
