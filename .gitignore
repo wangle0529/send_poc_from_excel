@@ -1,0 +1,32 @@
+# 忽略构建文件
+build/
+dist/
+*.spec
+
+# 忽略临时文件
+__pycache__/
+*.pyc
+
+# 忽略测试文件
+testfile/
+
+# 忽略IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略日志文件
+*.log
+
+# 忽略环境文件
+.env
+.venv/
+venv/
+ENV/
+env/
