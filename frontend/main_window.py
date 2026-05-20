@@ -2,6 +2,8 @@ import tkinter as tk
 import os
 from frontend.repeater import Repeater
 from frontend.ex_repeater import ExRepeater
+from frontend.formatter import FormatterPage
+from frontend.changelog import ChangelogPage
 
 def get_version():
     """从版本文件读取版本号"""
@@ -46,8 +48,9 @@ class MainWindow(tk.Tk):
         self.right_frame.grid_columnconfigure(0, weight=1)
 
         # 左边菜单按钮
-        self.left_button_texts = ["ExRepeater", "Repeater","others"]
+        self.left_button_texts = ["ExRepeater", "Repeater", "Formatter", "Changelog"]
         self.left_buttons = []
+        self.current_selected = None
 
         # 设置左边菜单按钮布局
         for i in range(len(self.left_button_texts)):
@@ -58,9 +61,8 @@ class MainWindow(tk.Tk):
         self.right_content_frames = {}
         self.right_content_frames["ExRepeater"] = ExRepeater(self.right_frame)
         self.right_content_frames["Repeater"] = Repeater(self.right_frame)   #v2.0.250827,增加Repeater模块
-
-        # 初始化显示第一个页面
-        self.show_frame("Repeater")
+        self.right_content_frames["Formatter"] = FormatterPage(self.right_frame)  # 增加格式化页面
+        self.right_content_frames["Changelog"] = ChangelogPage(self.right_frame)  # 更新日志页面
 
         # 生成左边按钮
         for i, text in enumerate(self.left_button_texts):
@@ -68,6 +70,9 @@ class MainWindow(tk.Tk):
             btn.grid(row=i, column=0, sticky="ew", padx=2, pady=2)
             btn.configure(height=2)
             self.left_buttons.append(btn)
+
+        # 初始化显示第一个页面（按钮创建完成后）
+        self.show_frame("Changelog")
 
     def set_window_icon(self, icon_path):
         try:
@@ -84,6 +89,15 @@ class MainWindow(tk.Tk):
         # 显示目标frame并填满 right_frame
         if page_name in self.right_content_frames:
             self.right_content_frames[page_name].grid(row=0, column=0, sticky="nsew")
+
+        # 更新按钮样式：选中加粗
+        for i, btn in enumerate(self.left_buttons):
+            text = self.left_button_texts[i] if i < len(self.left_button_texts) else ""
+            if text == page_name:
+                btn.configure(font=("Arial", 10, "bold"))
+                self.current_selected = text
+            else:
+                btn.configure(font=("Arial", 9, "normal"))
 
 if __name__ == '__main__':
     app = MainWindow()

@@ -30,3 +30,6 @@ Thumbs.db
 venv/
 ENV/
 env/
+
+*.md
+*.spec

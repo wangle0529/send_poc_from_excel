@@ -97,6 +97,9 @@ class Repeater(tk.Frame):
         self.output_text.grid(row=0, column=0, sticky="nsew")
         v_scroll2.grid(row=0, column=1, sticky="ns")
 
+        # 显示欢迎提示
+        self.show_welcome_message()
+
         # 初始化客户端
         self.http_client = HTTPClient()
         self.parser = RequestParser()
@@ -160,3 +163,34 @@ class Repeater(tk.Frame):
     # ==================== 日志输出 ====================
     def log(self, message):
         print(message)  # 可改为 GUI 日志面板
+
+    # ==================== 显示欢迎信息 ====================
+    def show_welcome_message(self):
+        """显示欢迎提示信息"""
+        welcome_text = """
+============================================================
+                        Repeater 工具
+============================================================
+
+本功能用于手动发送单个 HTTP 请求，方便测试和调试。
+
+【使用说明】
+  1. 在服务器地址输入框中输入目标地址（如：127.0.0.1:8080）
+  2. 如需使用 HTTPS，请勾选 HTTPS 选项
+  3. 在请求输入框中输入完整的 HTTP 请求报文
+  4. 点击"发送"按钮发送请求
+  5. 响应结果将显示在下方响应区域
+
+【请求格式示例】
+  POST /api/test HTTP/1.1
+  Host: 127.0.0.1:8080
+  Content-Type: application/json
+  Content-Length: 18
+
+  {"key": "value"}
+
+============================================================
+"""
+        self.output_text.config(state="normal")
+        self.output_text.insert("end", welcome_text)
+        self.output_text.config(state="disabled")

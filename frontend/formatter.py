@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from openpyxl.utils import get_column_letter, column_index_from_string
 import threading
-from backend.excel_processor import ExcelProcessor
+from utils.format import Formatter
 
 def generate_excel_columns():
     columns = []
@@ -13,10 +13,10 @@ def generate_excel_columns():
             columns.append(chr(65 + i) + chr(65 + j))
     return columns[:26] + columns[26:] # To ensure we only go up to AZ
 
-class ExRepeater(tk.Frame):
+class FormatterPage(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.configure(bg="lightblue")
+        self.configure(bg="lightgreen")
 
         # 设置整体列数为1列（每行一个 Frame）
         self.grid_columnconfigure(0, weight=1)
@@ -92,59 +92,30 @@ class ExRepeater(tk.Frame):
             row=0, column=3, padx=0
         )
 
-        # ====== 3. 输出列 & 发送间隔 ======
-        row_col_frame = tk.Frame(self)
-        row_col_frame.grid(row=3, column=0, sticky="ew", padx=0, pady=0)
+        # ====== 3. 输出列 + 开始格式化按钮 ======
+        output_col_frame = tk.Frame(self)
+        output_col_frame.grid(row=3, column=0, sticky="ew", padx=0, pady=0)
 
-        # 设置四列权重：Label 列不扩展，Entry/Combobox 列扩展
-        for i in range(4):
-            row_col_frame.grid_columnconfigure(i, weight=1 if i in (1, 3) else 0)
+        # 设置列权重：Label 列不扩展，中间列扩展，按钮列不扩展
+        output_col_frame.grid_columnconfigure(1, weight=1)
 
         # 输出列
-        tk.Label(row_col_frame, text="输出列:", width=label_width, anchor="w").grid(
+        tk.Label(output_col_frame, text="输出列:", width=label_width, anchor="w").grid(
             row=0, column=0, sticky="w", padx=0
         )
-        self.output_col_combo = ttk.Combobox(row_col_frame, values=excel_columns, width=10)
+        self.output_col_combo = ttk.Combobox(output_col_frame, values=excel_columns, width=10)
         self.output_col_combo.grid(row=0, column=1, sticky="w", padx=0)
         self.output_col_combo.set("H")
 
-        #发送间隔
-        tk.Label(row_col_frame, text="发送间隔(ms):", width=12, anchor="w").grid(
-            row=0, column=2, sticky="w", padx=0
+        # 开始格式化按钮（放在输出列右边）
+        tk.Button(output_col_frame, text="开始格式化", width=label_width, command=self.start_format).grid(
+            row=0, column=2, padx=0
         )
 
-        self.input_col_interval = ttk.Combobox(row_col_frame, values=[100*int(i) for i in range(1, 21)], width=10,state="readonly")
-        self.input_col_interval.grid(row=0, column=3, sticky="w", padx=0)
-        self.input_col_interval.set(200)
-
-        # ====== 4. 服务器地址 + 发送按钮 ======
-        server_frame = tk.Frame(self)
-        server_frame.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
-        server_frame.grid_columnconfigure(1, weight=1)
-
-        tk.Label(server_frame, text="服务器地址:", width=label_width, anchor="w").grid(
-            row=0, column=0, sticky="w", padx=0
-        )
-        self.server_entry = tk.Entry(server_frame)
-        self.server_entry.grid(row=0, column=1, sticky="ew", padx=0)
-        self.server_entry.insert(0, "127.0.0.1:8080")
-
-        # v20251021支持https功能
-        self.use_https=tk.IntVar()
-
-        tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https).grid(row=0, column=2, padx=5)
-
-        tk.Button(server_frame, text="发送", width=label_width, command=self.send_to_server).grid(
-            row=0, column=3, padx=0
-        )
-        tk.Button(server_frame, text="停止", width=label_width, command=self.stop_to_send).grid(
-            row=0, column=4, padx=0
-        )
-
-        # ====== 5. 输出日志窗口 + 滚动条 ======
+        # ====== 4. 输出日志窗口 + 滚动条 ======
         output_frame = tk.Frame(self)
-        output_frame.grid(row=5, column=0, sticky="nsew", padx=0, pady=0)
-        self.grid_rowconfigure(5, weight=1)
+        output_frame.grid(row=4, column=0, sticky="nsew", padx=0, pady=0)
+        self.grid_rowconfigure(4, weight=1)
 
         self.output_text = tk.Text(output_frame, wrap="word", state="disabled", bg="black", fg="lime")
         scrollbar = tk.Scrollbar(output_frame, command=self.output_text.yview)
@@ -153,33 +124,34 @@ class ExRepeater(tk.Frame):
         self.output_text.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # 初始化格式化器
+        self.formatter = None
+        self.formatting = False
+
         # 显示欢迎提示
         self.show_welcome_message()
 
-        # 初始化处理器
-        self.processor = None
-
     # ==== 功能函数 ====
     def browse_input_file(self):
-        path = filedialog.askopenfilename()
+        path = filedialog.askopenfilename(filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")])
         if path:
             self.input_path.delete(0, "end")
             self.input_path.insert(0, path)
 
     def browse_output_file(self):
-        path = filedialog.asksaveasfilename(defaultextension=".txt")
+        path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")])
         if path:
             self.output_path.delete(0, "end")
             self.output_path.insert(0, path)
 
-    def send_to_server(self):
-        if hasattr(self, 'sending') and self.sending:
+    def start_format(self):
+        if hasattr(self, 'formatting') and self.formatting:
             self.log("任务已在运行中，请勿重复点击")
             return
 
-        self.sending = True
+        self.formatting = True
 
-        self.log("检测中，请稍候......")
+        self.log("格式化中，请稍候......")
 
         try:
             input_file = self.input_path.get()
@@ -187,37 +159,26 @@ class ExRepeater(tk.Frame):
             column = column_index_from_string(self.input_col_combo.get())
             output_file = self.output_path.get()
             output_column = column_index_from_string(self.output_col_combo.get())
-            dst = self.server_entry.get()
-            interval = float(self.input_col_interval.get()) / 1000
 
-            # 处理 HTTPS 选项
-            https = 'y' if self.use_https.get() else 'n'
-
-            # 创建处理器
-            self.processor = ExcelProcessor(
-                input_file=input_file,
-                row=row,
-                column=column,
-                output_file=output_file,
-                output_column=output_column,
-                dst=dst,
-                use_https=https,
-                log_func=self.log,
-                finish_callback=self.on_task_complete,
-                send_interval=interval
-            )
+            # 创建格式化器
+            self.formatter = Formatter()
 
             # 启动线程
-            thread = threading.Thread(target=self.processor.process)
+            thread = threading.Thread(target=self.run_format, args=(input_file, row, column, output_file, output_column))
             thread.daemon = True  # 设置为守护线程，主线程退出时自动结束
             thread.start()
 
         except Exception as e:
             self.log(f"启动任务失败: {e}")
+            self.formatting = False
 
-    def on_task_complete(self):
-        self.sending = False
-        self.log("任务已完成")
+    def run_format(self, input_file, row, column, output_file, output_column):
+        try:
+            self.formatter.format_excel(input_file, row, column, output_file, output_column, log_func=self.log)
+        except Exception as e:
+            self.log(f"格式化失败: {e}")
+        finally:
+            self.formatting = False
 
     def log(self, message):
         self.output_text.config(state="normal")
@@ -225,37 +186,25 @@ class ExRepeater(tk.Frame):
         self.output_text.see("end")
         self.output_text.config(state="disabled")
 
-    # ==== 20251011，新增暂停功能 ====
-    def stop_to_send(self):
-        if self.processor:
-            self.processor.stop()
-            self.log("已停止发送")
-
     def show_welcome_message(self):
         """显示欢迎提示信息"""
         welcome_text = """
 ============================================================
-                      ExRepeater 工具
+                    报文格式化工具
 ============================================================
 
-本功能用于批量发送 Excel 文件中的 HTTP 请求报文。
+本功能用于处理报文中的多余空行，让您的报文更加整洁规范。
 
 【使用说明】
-  1. 选择输入的Excel文件（包含待发送的请求报文）
+  1. 选择输入的Excel文件（包含待处理的报文）
   2. 设置起始行和输入列（指定报文所在位置）
-  3. 选择输出文件和输出列（指定响应结果保存位置）
-  4. 设置发送间隔（默认200ms）
-  5. 在服务器地址输入框中输入目标地址
-  6. 如需使用 HTTPS，请勾选 HTTPS 选项
-  7. 点击"发送"按钮开始批量发送
-  8. 点击"停止"按钮可随时停止发送
+  3. 选择输出文件和输出列（指定格式化后保存位置）
+  4. 点击"开始格式化"按钮开始处理
 
 【功能特点】
-  • 支持批量处理 Excel 中的多条请求报文
-  • 自动解析并发送 HTTP 请求
-  • 响应结果自动保存到指定输出列
-  • 支持 HTTP 和 HTTPS 协议
-  • 可设置发送间隔，避免请求过快
+  • 智能识别并去除连续的多余空行
+  • 保留必要的单个空行，保持报文格式
+  • 批量处理Excel中的多条报文
 
 ============================================================
 """
