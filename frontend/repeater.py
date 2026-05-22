@@ -59,7 +59,7 @@ class Repeater(tk.Frame):
         input_frame.grid_rowconfigure(0, weight=1)
         input_frame.grid_columnconfigure(0, weight=1)
 
-        self.input_text = tk.Text(input_frame, wrap="word", undo=True, font=("Consolas", 10), height=4)
+        self.input_text = tk.Text(input_frame, wrap="none", undo=False, font=("Consolas", 10), height=4)
         v_scroll1 = tk.Scrollbar(input_frame, orient="vertical", command=self.input_text.yview)
         self.input_text.configure(yscrollcommand=v_scroll1.set)
 
