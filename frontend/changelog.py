@@ -34,7 +34,7 @@ class ChangelogPage(tk.Frame):
         self.load_changelog()
 
     def load_changelog(self):
-        changelog_path = os.path.join(os.path.dirname(__file__), "..", "changelog.txt")
+        changelog_path = os.path.join(os.path.dirname(__file__), "..", "static", "changelog.txt")
 
         try:
             with open(changelog_path, 'r', encoding='utf-8') as f:
