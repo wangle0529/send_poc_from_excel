@@ -17,7 +17,7 @@ class Repeater(tk.Frame):
 
         self.label_width = 12
 
-        # ====== 1. 服务器地址 + 发送按钮 ======
+        # ====== 1. 服务器地址 ======
         server_frame = tk.Frame(self, bg="white")
         server_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         server_frame.grid_columnconfigure(1, weight=1)
@@ -33,17 +33,14 @@ class Repeater(tk.Frame):
         self.use_https=tk.IntVar()
         tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https).grid(row=0, column=2, padx=5)
 
-        tk.Button(
-            server_frame,
-            text="发送",
-            width=10,
-            command=self.on_send_click  # 绑定发送事件
-        ).grid(row=0, column=3, padx=5)
+        # v20250527自动更新content-length功能
+        self.auto_update_content_length=tk.IntVar()
+        tk.Checkbutton(server_frame, text="自动更新Content-Length",  variable=self.auto_update_content_length).grid(row=0, column=3, padx=5)
 
-        # ====== 2. 输入数据标签 ======
+        # ====== 2. 输入数据标签 + 发送按钮 ======
         input_frame = tk.Frame(self, bg="white")
         input_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
-        input_frame.grid_columnconfigure(1, weight=1)
+        input_frame.grid_columnconfigure(0, weight=1)
 
         tk.Label(
             input_frame,
@@ -51,7 +48,14 @@ class Repeater(tk.Frame):
             anchor="w",
             bg="white",
             font=("Arial", 10, "bold")
-        ).grid(row=1, column=0, sticky="w", padx=10, pady=(10, 5))
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
+
+        tk.Button(
+            input_frame,
+            text="发送",
+            width=10,
+            command=self.on_send_click
+        ).grid(row=0, column=1, padx=5)
 
         # ====== 3. 输入文本框 ======
         input_frame = tk.Frame(self)
@@ -135,7 +139,19 @@ class Repeater(tk.Frame):
         else:
             url = f"http://{self.dst}{request_data['path']}"
 
-        # 6. 发送请求
+        # 6. 自动更新 Content-Length
+        if self.auto_update_content_length.get():
+            body_length = len(request_data['body']) if request_data['body'] else 0
+            headers = request_data['headers']
+            has_content_length = any(key.lower() == 'content-length' for key in headers)
+            if has_content_length:
+                keys_to_delete = [key for key in headers if key.lower() == 'content-length']
+                for key in keys_to_delete:
+                    del headers[key]
+            if body_length > 0:
+                headers.add('Content-Length', str(body_length))
+
+        # 7. 发送请求
         response = self.http_client.send_request(
             method=request_data['method'],
             url=url,
@@ -143,7 +159,7 @@ class Repeater(tk.Frame):
             body=request_data['body']
         )
 
-        # 7. 显示结果
+        # 8. 显示结果
         if hasattr(response, 'status_code'):
             result = (
                 f"=== 响应状态 ===\n"

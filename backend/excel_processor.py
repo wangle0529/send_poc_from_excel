@@ -9,7 +9,7 @@ class ExcelProcessor:
     """Excel 文件处理器"""
     
     def __init__(self, input_file, row, column, output_file, output_column, dst, use_https, 
-                 log_func=None, finish_callback=None, send_interval=0.1):
+                 auto_update_content_length='n', log_func=None, finish_callback=None, send_interval=0.1):
         self.input_file = input_file
         self.row = row
         self.column = column
@@ -17,6 +17,7 @@ class ExcelProcessor:
         self.output_column = output_column
         self.dst = dst
         self.use_https = use_https
+        self.auto_update_content_length = auto_update_content_length
         self.log = log_func if log_func else print
         self.finish = finish_callback if finish_callback else lambda: None
         self.send_interval = send_interval
@@ -65,6 +66,18 @@ class ExcelProcessor:
                             url = f"https://{self.dst}{request_data['path']}"
                         else:
                             url = f"http://{self.dst}{request_data['path']}"
+                        
+                        # 自动更新 Content-Length
+                        if self.auto_update_content_length in ['yes', 'y', 'Yes', 'Y']:
+                            body_length = len(request_data['body']) if request_data['body'] else 0
+                            headers = request_data['headers']
+                            has_content_length = any(key.lower() == 'content-length' for key in headers)
+                            if has_content_length:
+                                keys_to_delete = [key for key in headers if key.lower() == 'content-length']
+                                for key in keys_to_delete:
+                                    del headers[key]
+                            if body_length > 0:
+                                headers.add('Content-Length', str(body_length))
                         
                         # 发送请求
                         response = self.http_client.send_request(

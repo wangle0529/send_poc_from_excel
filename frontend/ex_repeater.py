@@ -117,7 +117,7 @@ class ExRepeater(tk.Frame):
         self.input_col_interval.grid(row=0, column=3, sticky="w", padx=0)
         self.input_col_interval.set(200)
 
-        # ====== 4. 服务器地址 + 发送按钮 ======
+        # ====== 4. 服务器地址 ======
         server_frame = tk.Frame(self)
         server_frame.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
         server_frame.grid_columnconfigure(1, weight=1)
@@ -134,11 +134,16 @@ class ExRepeater(tk.Frame):
 
         tk.Checkbutton(server_frame, text="HTTPS",  variable=self.use_https).grid(row=0, column=2, padx=5)
 
+        # v20250527自动更新content-length功能
+        self.auto_update_content_length=tk.IntVar()
+        tk.Checkbutton(server_frame, text="自动更新Content-Length",  variable=self.auto_update_content_length).grid(row=0, column=3, padx=5)
+
+        # ====== 5. 发送按钮（下一行最右边） ======
         tk.Button(server_frame, text="发送", width=label_width, command=self.send_to_server).grid(
-            row=0, column=3, padx=0
+            row=1, column=3, padx=0, sticky="e"
         )
         tk.Button(server_frame, text="停止", width=label_width, command=self.stop_to_send).grid(
-            row=0, column=4, padx=0
+            row=1, column=4, padx=0, sticky="e"
         )
 
         # ====== 5. 输出日志窗口 + 滚动条 ======
@@ -192,6 +197,9 @@ class ExRepeater(tk.Frame):
 
             # 处理 HTTPS 选项
             https = 'y' if self.use_https.get() else 'n'
+            
+            # 处理自动更新 Content-Length 选项
+            auto_update_cl = 'y' if self.auto_update_content_length.get() else 'n'
 
             # 创建处理器
             self.processor = ExcelProcessor(
@@ -202,6 +210,7 @@ class ExRepeater(tk.Frame):
                 output_column=output_column,
                 dst=dst,
                 use_https=https,
+                auto_update_content_length=auto_update_cl,
                 log_func=self.log,
                 finish_callback=self.on_task_complete,
                 send_interval=interval

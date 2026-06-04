@@ -67,3 +67,6 @@ v2.0.260520
 
 v2.0.260522
   1、Repeater输入框取消自动换行，避免卡死  
+
+v2.0.260622
+  1、ExRepeater和Repeater增加自动处理Content-Length选项
