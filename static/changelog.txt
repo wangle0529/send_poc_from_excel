@@ -70,3 +70,6 @@ v2.0.260522
 
 v2.0.260622
   1、ExRepeater和Repeater增加自动处理Content-Length选项
+  2、ExRepeater新增"仅发送"复选框，勾选后只发送报文不输出文件
+  3、ExRepeater新增"循环"复选框，勾选后联动勾选仅发送，无限循环发送报文
+  4、ExRepeater发送间隔支持0-4000ms范围
