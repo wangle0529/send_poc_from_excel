@@ -72,7 +72,8 @@ class ExcelProcessor:
                         method=request_data['method'],
                         url=url,
                         headers=request_data['headers'],
-                        body=request_data['body']
+                        body=request_data['body'],
+                        http_version=request_data['http_version']
                     )
 
                     if not self.send_only and ws1 is not None:

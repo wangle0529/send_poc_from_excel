@@ -113,7 +113,7 @@ class ExRepeater(tk.Frame):
             row=0, column=2, sticky="w", padx=0
         )
 
-        self.input_col_interval = ttk.Combobox(row_col_frame, values=[100*int(i) for i in range(0, 41)], width=10,state="readonly")
+        self.input_col_interval = ttk.Combobox(row_col_frame, values=[100*int(i) for i in range(0, 410)], width=10,state="readonly")
         self.input_col_interval.grid(row=0, column=3, sticky="w", padx=0)
         self.input_col_interval.set(200)
 

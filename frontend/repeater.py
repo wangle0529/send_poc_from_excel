@@ -156,7 +156,8 @@ class Repeater(tk.Frame):
             method=request_data['method'],
             url=url,
             headers=request_data['headers'],
-            body=request_data['body']
+            body=request_data['body'],
+            http_version=request_data['http_version']
         )
 
         # 8. 显示结果
