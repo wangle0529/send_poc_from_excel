@@ -32,12 +32,9 @@ class HTTPClient:
             header_lines.append(f"Content-Length: {len(body)}")
         header_block = "\r\n".join(header_lines) + "\r\n"
 
-        # 组合完整请求
+        # 组合完整请求（body 已在入口归一化为 bytes，直接按二进制流拼接，不做类型判断）
         request = request_line + header_block + "\r\n"
-        if body:
-            request = request.encode('utf-8') + body.encode('utf-8')
-        else:
-            request = request.encode('utf-8')
+        request = request.encode('utf-8') + (body if body else b'')
 
         # 建立连接
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,7 +109,13 @@ class HTTPClient:
         return ErrorResponse(error_text, url)
 
     def send_request(self, method, url, headers, body, http_version='1.1', redirect=False, retries=False):
-        """发送 HTTP 请求，支持多个重名 header"""
+        """发送 HTTP 请求，支持多个重名 header，body 统一按二进制流发送"""
+        # 统一将 body 归一化为 bytes（str 编码为 utf-8，bytes/None 原样处理），直接按二进制流发送
+        if body is None:
+            body = b''
+        elif isinstance(body, str):
+            body = body.encode('utf-8')
+
         # 如果 HTTP 版本不是标准 1.1，走 raw socket 路径
         if http_version != '1.1':
             return self._send_raw(method, url, headers, body, http_version)

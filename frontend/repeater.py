@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 from backend.http_client import HTTPClient
 from backend.request_parser import RequestParser
 
@@ -10,7 +11,7 @@ class Repeater(tk.Frame):
         # --- 主行列权重 ---
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)
-        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(1, weight=0)  # 统一容器（标签+按钮）
         self.grid_rowconfigure(2, weight=2)  # 输入框：2份
         self.grid_rowconfigure(3, weight=0)
         self.grid_rowconfigure(4, weight=3)  # 输出框：3份（更高）
@@ -37,25 +38,28 @@ class Repeater(tk.Frame):
         self.auto_update_content_length=tk.IntVar()
         tk.Checkbutton(server_frame, text="自动更新Content-Length",  variable=self.auto_update_content_length).grid(row=0, column=3, padx=5)
 
-        # ====== 2. 输入数据标签 + 发送按钮 ======
-        input_frame = tk.Frame(self, bg="white")
-        input_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
-        input_frame.grid_columnconfigure(0, weight=1)
+        # ====== 2. 统一容器（标签 + 按钮，保证两按钮右对齐） ======
+        control_frame = tk.Frame(self, bg="white")
+        control_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        control_frame.grid_columnconfigure(1, weight=1)
 
-        tk.Label(
-            input_frame,
-            text="请求:",
-            anchor="w",
-            bg="white",
-            font=("Arial", 10, "bold")
-        ).grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
+        # Row 0: 请求标签 + 发送按钮
+        tk.Label(control_frame, text="请求:", anchor="w", bg="white",
+                 font=("Arial", 10, "bold")).grid(
+            row=0, column=0, sticky="w", padx=(0, 5), pady=(10, 5))
+        tk.Button(control_frame, text="发送", width=10,
+                  command=self.on_send_click).grid(
+            row=0, column=2, padx=5)
 
-        tk.Button(
-            input_frame,
-            text="发送",
-            width=10,
-            command=self.on_send_click
-        ).grid(row=0, column=1, padx=5)
+        # Row 1: 从文件获取请求体 + 浏览按钮
+        tk.Label(control_frame, text="从文件获取请求体:", bg="white",
+                 font=("Arial", 10, "bold")).grid(
+            row=1, column=0, sticky="w", padx=(0, 5), pady=5)
+        self.body_file_entry = tk.Entry(control_frame)
+        self.body_file_entry.grid(row=1, column=1, sticky="ew", padx=5)
+        tk.Button(control_frame, text="浏览", width=10,
+                  command=self.browse_body_file).grid(
+            row=1, column=2, padx=5)
 
         # ====== 3. 输入文本框 ======
         input_frame = tk.Frame(self)
@@ -133,6 +137,16 @@ class Repeater(tk.Frame):
             self.log(f"解析失败：{e}")
             return
 
+        # 4.5 从文件获取请求体（覆盖文本框中的 body，按二进制流读取）
+        body_file = self.body_file_entry.get().strip()
+        if body_file:
+            try:
+                with open(body_file, 'rb') as f:
+                    request_data['body'] = f.read()
+            except Exception as e:
+                self.log(f"读取请求体文件失败：{e}")
+                return
+
         # 5. 构建 URL
         if self.use_https.get():
             url = f"https://{self.dst}{request_data['path']}"
@@ -177,6 +191,13 @@ class Repeater(tk.Frame):
 
         self.output_text.config(state="disabled")
 
+    # ==================== 浏览请求体文件 ====================
+    def browse_body_file(self):
+        path = filedialog.askopenfilename(title="选择请求体文件")
+        if path:
+            self.body_file_entry.delete(0, "end")
+            self.body_file_entry.insert(0, path)
+
     # ==================== 日志输出 ====================
     def log(self, message):
         print(message)  # 可改为 GUI 日志面板
@@ -195,8 +216,9 @@ class Repeater(tk.Frame):
   1. 在服务器地址输入框中输入目标地址（如：127.0.0.1:8080）
   2. 如需使用 HTTPS，请勾选 HTTPS 选项
   3. 在请求输入框中输入完整的 HTTP 请求报文
-  4. 点击"发送"按钮发送请求
-  5. 响应结果将显示在下方响应区域
+  4. 如需发送二进制请求体，可在"从文件获取请求体"处选择文件
+  5. 点击"发送"按钮发送请求
+  6. 响应结果将显示在下方响应区域
 
 【请求格式示例】
   POST /api/test HTTP/1.1
