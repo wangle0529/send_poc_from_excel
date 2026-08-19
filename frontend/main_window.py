@@ -1,0 +1,104 @@
+import tkinter as tk
+import os
+from frontend.repeater import Repeater
+from frontend.ex_repeater import ExRepeater
+from frontend.formatter import FormatterPage
+from frontend.changelog import ChangelogPage
+
+def get_version():
+    """从版本文件读取版本号"""
+    version_file = os.path.join(os.path.dirname(__file__), "..", "static", "version.txt")
+    try:
+        with open(version_file, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except Exception as e:
+        print(f"读取版本文件失败: {e}")
+        return "unknown"
+
+class MainWindow(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.version = get_version()
+        self.title(f'WAF工具_v{self.version}')
+        self.geometry('800x600')
+
+        # 设置窗口图标（.ico 文件）
+        icon_path = os.path.join(os.path.dirname(__file__), "..", "static", "favicon_256x256.ico")
+        self.set_window_icon(icon_path)
+
+        # 设置窗口最小和最大尺寸
+        self.minsize(width=800, height=600)
+        self.maxsize(width=1200, height=900)
+
+        # 左右分列，设置行和列的权重
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        # 左边 Frame：固定宽度
+        self.left_frame = tk.Frame(self, width=200, relief="solid", borderwidth=1, bg="light gray")
+        self.left_frame.grid(row=0, column=0, sticky="ns")
+        self.left_frame.grid_propagate(False)  # 禁止自动调整大小
+
+        # 右边 Frame：可变宽度
+        self.right_frame = tk.Frame(self, relief="solid", borderwidth=1, bg="white")
+        self.right_frame.grid(row=0, column=1, sticky="nsew")
+
+        # 配置 right_frame 权重，让内部 frame 能填满
+        self.right_frame.grid_rowconfigure(0, weight=1)
+        self.right_frame.grid_columnconfigure(0, weight=1)
+
+        # 左边菜单按钮
+        self.left_button_texts = ["ExRepeater", "Repeater", "Formatter", "Changelog"]
+        self.left_buttons = []
+        self.current_selected = None
+
+        # 设置左边菜单按钮布局
+        for i in range(len(self.left_button_texts)):
+            self.left_frame.grid_rowconfigure(i, weight=0)
+        self.left_frame.grid_columnconfigure(0, weight=1)
+
+        # 创建右侧不同页面的内容
+        self.right_content_frames = {}
+        self.right_content_frames["ExRepeater"] = ExRepeater(self.right_frame)
+        self.right_content_frames["Repeater"] = Repeater(self.right_frame)   #v2.0.250827,增加Repeater模块
+        self.right_content_frames["Formatter"] = FormatterPage(self.right_frame)  # 增加格式化页面
+        self.right_content_frames["Changelog"] = ChangelogPage(self.right_frame)  # 更新日志页面
+
+        # 生成左边按钮
+        for i, text in enumerate(self.left_button_texts):
+            btn = tk.Button(self.left_frame, text=text, command=lambda f=text: self.show_frame(f))
+            btn.grid(row=i, column=0, sticky="ew", padx=2, pady=2)
+            btn.configure(height=2)
+            self.left_buttons.append(btn)
+
+        # 初始化显示第一个页面（按钮创建完成后）
+        self.show_frame("Changelog")
+
+    def set_window_icon(self, icon_path):
+        try:
+            self.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"无法加载图标：{e}")
+
+    def show_frame(self, page_name):
+        """ 显示指定的页面 """
+        # 先隐藏所有frame
+        for frame in self.right_content_frames.values():
+            frame.grid_forget()
+
+        # 显示目标frame并填满 right_frame
+        if page_name in self.right_content_frames:
+            self.right_content_frames[page_name].grid(row=0, column=0, sticky="nsew")
+
+        # 更新按钮样式：选中加粗
+        for i, btn in enumerate(self.left_buttons):
+            text = self.left_button_texts[i] if i < len(self.left_button_texts) else ""
+            if text == page_name:
+                btn.configure(font=("Arial", 10, "bold"))
+                self.current_selected = text
+            else:
+                btn.configure(font=("Arial", 9, "normal"))
+
+if __name__ == '__main__':
+    app = MainWindow()
+    app.mainloop()
