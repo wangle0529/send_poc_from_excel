@@ -31,5 +31,4 @@ venv/
 ENV/
 env/
 
-*.md
 *.spec
