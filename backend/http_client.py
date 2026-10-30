@@ -1,3 +1,4 @@
+import time
 import urllib3
 import ssl
 import socket
@@ -40,7 +41,9 @@ class HTTPClient:
         request = request_line + header_block + "\r\n"
         request = request.encode('utf-8') + (body if body else b'')
 
-        # 建立连接
+        # 建立连接（开始计时）
+        start = time.perf_counter()
+        ttfb_ms = None
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
         try:
@@ -58,22 +61,25 @@ class HTTPClient:
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
+                if ttfb_ms is None:
+                    ttfb_ms = (time.perf_counter() - start) * 1000
                 response_data += chunk
                 # 简单判断响应是否完整（读到空行结束）
                 if b"\r\n\r\n" in response_data:
                     # 对于有 body 的响应，尝试读到 close
                     break
         finally:
+            elapsed_ms = (time.perf_counter() - start) * 1000
             sock.close()
 
         # 解析响应
         try:
             response_text = response_data.decode('utf-8', errors='ignore')
-            return self._parse_response(response_text, url)
+            return self._parse_response(response_text, url, elapsed_ms, ttfb_ms)
         except Exception as e:
-            return self._make_error_response(f"响应解析失败: {e}", url)
+            return self._make_error_response(f"响应解析失败: {e}", url, elapsed_ms, ttfb_ms)
 
-    def _parse_response(self, response_text, url):
+    def _parse_response(self, response_text, url, elapsed_ms=None, ttfb_ms=None):
         """解析原始 HTTP 响应"""
         parts = response_text.split('\r\n\r\n', 1)
         status_line_and_headers = parts[0]
@@ -94,23 +100,27 @@ class HTTPClient:
                 response_headers[key] = value
 
         class RawResponse:
-            def __init__(self, status_code, headers, text, url):
+            def __init__(self, status_code, headers, text, url, elapsed_ms=None, ttfb_ms=None):
                 self.status_code = status_code
                 self.headers = headers
                 self.text = text
                 self.url = url
+                self.elapsed_ms = elapsed_ms
+                self.ttfb_ms = ttfb_ms if ttfb_ms is not None else elapsed_ms
 
-        return RawResponse(status_code, response_headers, body, url)
+        return RawResponse(status_code, response_headers, body, url, elapsed_ms, ttfb_ms)
 
-    def _make_error_response(self, error_text, url):
+    def _make_error_response(self, error_text, url, elapsed_ms=None, ttfb_ms=None):
         """生成错误响应对象"""
         class ErrorResponse:
-            def __init__(self, error, url):
+            def __init__(self, error, url, elapsed_ms=None, ttfb_ms=None):
                 self.status_code = 0
                 self.headers = {}
                 self.text = f"请求失败: {str(error)}"
                 self.url = url
-        return ErrorResponse(error_text, url)
+                self.elapsed_ms = elapsed_ms
+                self.ttfb_ms = ttfb_ms if ttfb_ms is not None else elapsed_ms
+        return ErrorResponse(error_text, url, elapsed_ms, ttfb_ms)
 
     def send_request(self, method, url, headers, body, http_version='1.1', redirect=False, retries=False):
         """发送 HTTP 请求，支持多个重名 header，body 统一按二进制流发送"""
@@ -124,7 +134,9 @@ class HTTPClient:
         if http_version != '1.1':
             return self._send_raw(method, url, headers, body, http_version)
 
+        start = time.perf_counter()
         try:
+            # preload_content=False：响应头到达后立即返回，便于区分首字节耗时与总耗时
             response = self.http.request(
                 method=method,
                 url=url,
@@ -132,17 +144,33 @@ class HTTPClient:
                 body=body,
                 redirect=redirect,
                 retries=retries,
-                timeout=self.timeout
+                timeout=self.timeout,
+                preload_content=False
             )
+            ttfb_ms = (time.perf_counter() - start) * 1000
+            data = response.read()
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            status_code = response.status
+            resp_headers = response.getheaders()
+            response.release_conn()
 
             # 包装响应对象
             class Urllib3Response:
-                def __init__(self, urllib3_response, url):
-                    self.status_code = urllib3_response.status
-                    self.headers = urllib3_response.getheaders()
-                    self.text = urllib3_response.data.decode('utf-8', errors='ignore')
+                def __init__(self, status_code, headers, text, url, elapsed_ms=None, ttfb_ms=None):
+                    self.status_code = status_code
+                    self.headers = headers
+                    self.text = text
                     self.url = url
+                    self.elapsed_ms = elapsed_ms
+                    self.ttfb_ms = ttfb_ms if ttfb_ms is not None else elapsed_ms
 
-            return Urllib3Response(response, url)
+            return Urllib3Response(
+                status_code,
+                resp_headers,
+                data.decode('utf-8', errors='ignore'),
+                url,
+                elapsed_ms,
+                ttfb_ms
+            )
         except Exception as e:
-            return self._make_error_response(e, url)
+            return self._make_error_response(e, url, (time.perf_counter() - start) * 1000)

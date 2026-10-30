@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 from backend.http_client import HTTPClient
 from backend.request_parser import RequestParser
+from utils.latency_stats import LatencyStats
 
 class Repeater(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -74,14 +75,31 @@ class Repeater(tk.Frame):
         self.input_text.grid(row=0, column=0, sticky="nsew")
         v_scroll1.grid(row=0, column=1, sticky="ns")
 
-        # ====== 4. 输出数据标签 ======
+        # ====== 4. 输出数据标签 + 延时统计 ======
+        resp_header_frame = tk.Frame(self, bg="white")
+        resp_header_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(10, 5))
+        resp_header_frame.grid_columnconfigure(1, weight=1)
+
         tk.Label(
-            self,
+            resp_header_frame,
             text="响应:",
             anchor="w",
             bg="white",
             font=("Arial", 10, "bold")
-        ).grid(row=3, column=0, sticky="w", padx=10, pady=(10, 5))
+        ).grid(row=0, column=0, sticky="w")
+
+        self.latency_label = tk.Label(
+            resp_header_frame,
+            text="",
+            anchor="w",
+            bg="white",
+            fg="blue",
+            font=("Consolas", 9)
+        )
+        self.latency_label.grid(row=0, column=1, sticky="w", padx=10)
+
+        tk.Button(resp_header_frame, text="清空统计", width=10,
+                  command=self.clear_stats).grid(row=0, column=2, sticky="e")
 
         # ====== 5. 输出文本框 ======
         output_frame = tk.Frame(self)
@@ -111,6 +129,9 @@ class Repeater(tk.Frame):
         # 初始化客户端
         self.http_client = HTTPClient()
         self.parser = RequestParser()
+
+        # 延时统计
+        self.latency_stats = LatencyStats()
 
     # ==================== 发送按钮点击事件 ====================
     def on_send_click(self):
@@ -176,16 +197,31 @@ class Repeater(tk.Frame):
 
         # 8. 显示结果
         if hasattr(response, 'status_code'):
+            elapsed_ms = getattr(response, 'elapsed_ms', None)
+            ttfb_ms = getattr(response, 'ttfb_ms', None)
+
+            cost_line = ""
+            if elapsed_ms is not None:
+                if ttfb_ms is not None:
+                    cost_line = f"耗时: {elapsed_ms:.2f} ms（首字节 {ttfb_ms:.2f} ms）\n"
+                else:
+                    cost_line = f"耗时: {elapsed_ms:.2f} ms\n"
+
             result = (
                 f"=== 响应状态 ===\n"
                 f"Status Code: {response.status_code}\n"
-                f"URL: {response.url}\n\n"
+                f"URL: {response.url}\n"
+                f"{cost_line}\n"
                 f"=== 响应头 ===\n"
                 f"{response.headers}\n\n"
                 f"=== 响应体 ===\n"
                 f"{response.text}"
             )
             self.output_text.insert("end", result)
+
+            # 记录延时统计并刷新显示
+            self.latency_stats.add(elapsed_ms, success=(response.status_code != 0))
+            self._update_latency_label(elapsed_ms, ttfb_ms)
         else:
             self.output_text.insert("end", f"发送失败：\n{response}")
 
@@ -197,6 +233,28 @@ class Repeater(tk.Frame):
         if path:
             self.body_file_entry.delete(0, "end")
             self.body_file_entry.insert(0, path)
+
+    # ==================== 延时统计 ====================
+    def _update_latency_label(self, elapsed_ms=None, ttfb_ms=None):
+        """刷新延时统计标签"""
+        stats = self.latency_stats
+        parts = []
+        if elapsed_ms is not None:
+            if ttfb_ms is not None:
+                parts.append(f"本次: {elapsed_ms:.2f}ms（首字节 {ttfb_ms:.2f}ms）")
+            else:
+                parts.append(f"本次: {elapsed_ms:.2f}ms")
+        if stats.count:
+            parts.append(
+                f"累计 {stats.count} 次 | 平均 {stats.avg:.2f}ms  最小 {stats.min:.2f}ms  "
+                f"最大 {stats.max:.2f}ms  P95 {stats.p95:.2f}ms"
+            )
+        self.latency_label.config(text="    ".join(parts))
+
+    def clear_stats(self):
+        """清空延时统计"""
+        self.latency_stats.reset()
+        self.latency_label.config(text="")
 
     # ==================== 日志输出 ====================
     def log(self, message):

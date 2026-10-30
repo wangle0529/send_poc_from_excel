@@ -4,12 +4,14 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from .http_client import HTTPClient
 from .request_parser import RequestParser
+from utils.latency_stats import LatencyStats
 
 class ExcelProcessor:
     """Excel 文件处理器"""
     
     def __init__(self, input_file, row, column, output_file, output_column, dst, use_https, 
-                 auto_update_content_length='n', send_only=0, loop=0, log_func=None, finish_callback=None, send_interval=0.1):
+                 auto_update_content_length='n', send_only=0, loop=0, log_func=None, finish_callback=None, send_interval=0.1,
+                 record_latency=1):
         self.input_file = input_file
         self.row = row
         self.column = column
@@ -24,6 +26,9 @@ class ExcelProcessor:
         self.finish = finish_callback if finish_callback else lambda: None
         self.send_interval = send_interval
         self.stop_flag = False
+        # 延时统计：record_latency=1 时把耗时写入【输出列+3】
+        self.record_latency = record_latency
+        self.stats = LatencyStats()
         
         self.http_client = HTTPClient()
         self.parser = RequestParser()
@@ -76,10 +81,20 @@ class ExcelProcessor:
                         http_version=request_data['http_version']
                     )
 
+                    # 延时统计：记录本次请求耗时
+                    elapsed_ms = getattr(response, 'elapsed_ms', None)
+                    ttfb_ms = getattr(response, 'ttfb_ms', None)
+                    self.stats.add(elapsed_ms, success=(getattr(response, 'status_code', 0) != 0))
+
                     if not self.send_only and ws1 is not None:
                         # 写入响应
                         ws1.cell(row=start_row, column=col1, value=response.text)
                         ws1.cell(row=start_row, column=col1+1, value=response.status_code)
+
+                        # 写入耗时（毫秒，位于【输出列+3】）
+                        if self.record_latency:
+                            ws1.cell(row=start_row, column=col1+3,
+                                     value=round(elapsed_ms, 2) if elapsed_ms is not None else None)
 
                         # 提取 Request ID
                         pattern_ah = r"Request ID:\s*(\d{19})"
@@ -92,7 +107,10 @@ class ExcelProcessor:
                         if match_ct:
                             ws1.cell(row=start_row, column=col1+2, value=match_ct.group(1))
 
-                    self.log(f"第{start_row}行发送完成，响应码：{response.status_code}")
+                    cost_text = f"{elapsed_ms:.2f}ms" if elapsed_ms is not None else "-"
+                    ttfb_text = f"{ttfb_ms:.2f}ms" if ttfb_ms is not None else "-"
+                    self.log(f"第{start_row}行发送完成，响应码：{response.status_code}，"
+                             f"耗时：{cost_text}（首字节 {ttfb_text}）")
                 except Exception as e:
                     self.log(f"第{start_row}行处理失败：{str(e)}")
                     if not self.send_only and ws1 is not None:
@@ -135,8 +153,16 @@ class ExcelProcessor:
 
             # 保存结果（仅发送模式下跳过）
             if not self.send_only and wb1 is not None:
+                # 写入耗时列表头（起始行大于 1 时，第 1 行视为表头行）
+                if self.record_latency and self.row > 1:
+                    ws1.cell(row=1, column=col1+3, value="耗时(ms)")
                 ws1.column_dimensions[get_column_letter(col)].width = 100
                 wb1.save(self.output_file)
+
+            # 输出延时统计汇总
+            if self.stats.count:
+                self.log("")
+                self.log(self.stats.summary())
         except Exception as e:
             self.log(f"发生错误: {e}")
         finally:
