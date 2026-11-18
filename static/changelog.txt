@@ -89,3 +89,7 @@ v2.0.261030
   3、ExRepeater耗时写入Excel【输出列+3】，表头为"耗时(ms)"
   4、任务结束后输出延时汇总：平均、最小、最大、P50、P95
   5、Repeater新增延时统计栏与"清空统计"按钮
+
+v2.0.261118
+  1、修复HTTP/1.0模式下请求头Content-Length重复的问题
+  2、raw socket路径仅在请求头缺少Content-Length时才自动补充

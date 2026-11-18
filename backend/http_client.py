@@ -31,9 +31,13 @@ class HTTPClient:
 
         # 构建请求头
         header_lines = []
+        has_content_length = False
         for key, value in headers.items():
             header_lines.append(f"{key}: {value}")
-        if body:
+            if key.lower() == 'content-length':
+                has_content_length = True
+        # 仅当请求头中没有 Content-Length 时才补充，避免重复
+        if body and not has_content_length:
             header_lines.append(f"Content-Length: {len(body)}")
         header_block = "\r\n".join(header_lines) + "\r\n"
 
